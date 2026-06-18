@@ -78,6 +78,23 @@
     background:var(--surface);
     padding:12px;
   }
+  details.api-panel,details.study-panel{display:block}
+  details.api-panel > *,details.study-panel > *{margin-top:10px}
+  details.api-panel > summary,details.study-panel > summary{margin-top:0}
+  summary{
+    cursor:pointer;
+    font-weight:800;
+    color:var(--ink);
+    list-style:none;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{
+    content:"開く";
+    float:right;
+    color:var(--jade);
+    font-size:.82rem;
+  }
+  details[open] > summary::after{content:"閉じる"}
   .api-row,.study-row{
     display:grid;
     grid-template-columns:repeat(2,minmax(170px,1fr));
@@ -292,7 +309,8 @@
         <button id="dirJa" type="button" aria-pressed="false">日本語 → 中国語</button>
       </div>
 
-      <div class="api-panel" aria-label="AI接続設定">
+      <details class="api-panel" aria-label="AI接続設定">
+        <summary>AI接続設定</summary>
         <div class="api-row">
           <div class="field">
             <label for="runtimeMode">実行モード</label>
@@ -319,9 +337,10 @@
           <button id="clearKey" class="ghost" type="button">保存キーを削除</button>
         </div>
         <p class="note">通常ブラウザで使う場合だけAPIキーを入力してください。長期保存は個人端末専用です。保存しない場合、キーはこのページを開いている間だけ使います。</p>
-      </div>
+      </details>
 
-      <div class="study-panel" aria-label="学習設定">
+      <details class="study-panel" aria-label="学習設定">
+        <summary>学習設定</summary>
         <div class="study-row">
           <div class="field">
             <label for="speechRate">読み上げ速度</label>
@@ -341,7 +360,7 @@
           </div>
         </div>
         <label class="check"><input id="autoAnalyzeVoice" type="checkbox">音声入力後に自動で解析する</label>
-      </div>
+      </details>
 
       <div>
         <label for="input" id="inputLabel">中国語の文章</label>
@@ -410,7 +429,6 @@ const KEY_API_SESSION = "trancerate.anthropicApiKey.session";
 const KEY_HISTORY = "trancerate.history";
 const KEY_FAVORITES = "trancerate.favorites";
 const KEY_PREFS = "trancerate.preferences";
-const BUILT_IN_ANTHROPIC_API_KEY = "";
 
 let direction = "zh2ja";
 let zhVoice = null;
@@ -467,11 +485,8 @@ function updateRuntimeStatus(){
 function loadSavedKey(){
   const saved = localStorage.getItem(KEY_API);
   const sessionSaved = sessionStorage.getItem(KEY_API_SESSION);
-  if (BUILT_IN_ANTHROPIC_API_KEY){
-    apiKeyEl.value = BUILT_IN_ANTHROPIC_API_KEY;
-    apiKeyEl.placeholder = "コード内APIキーを使用中";
-    rememberKeyEl.checked = false;
-  }else if (saved){
+  // Long-term storage wins over the current-tab key when both exist.
+  if (saved){
     apiKeyEl.value = saved;
     rememberKeyEl.checked = true;
   }else if (sessionSaved){
@@ -481,7 +496,6 @@ function loadSavedKey(){
 }
 
 function persistKeyPreference(){
-  if (BUILT_IN_ANTHROPIC_API_KEY) return;
   const key = apiKeyEl.value.trim();
   try{
     if (key) sessionStorage.setItem(KEY_API_SESSION, key);
