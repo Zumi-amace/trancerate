@@ -162,11 +162,29 @@
     font-weight:800;
     cursor:pointer;
   }
+  button.secondary{
+    appearance:none;
+    border:1.5px solid var(--jade);
+    border-radius:6px;
+    background:var(--surface);
+    color:var(--jade);
+    padding:.62rem .95rem;
+    font-size:.95rem;
+    font-weight:800;
+    cursor:pointer;
+  }
+  button.secondary:hover:not(:disabled){background:rgba(47,111,94,.08)}
+  button.secondary.listening{
+    background:var(--jade);
+    color:var(--paper);
+  }
   button.action:hover:not(:disabled){filter:brightness(1.07)}
   button.action:active:not(:disabled){transform:translateY(1px)}
   button:disabled{opacity:.55;cursor:not-allowed}
   button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   .hint{color:var(--muted);font-size:.82rem}
+  .voice-state{color:var(--muted);font-size:.82rem}
+  .voice-state.active{color:var(--jade);font-weight:700}
   .loading{
     display:none;
     align-items:center;
@@ -359,7 +377,9 @@
 
       <div class="controls">
         <button id="run" class="action" type="button">解析する</button>
+        <button id="voiceInput" class="secondary" type="button">中国語で音声入力</button>
         <span class="hint">Ctrl + Enter でも実行</span>
+        <span id="voiceState" class="voice-state"></span>
       </div>
 
       <div class="loading" id="loading" aria-live="polite">
@@ -379,6 +399,8 @@
 const $ = id => document.getElementById(id);
 const inputEl = $("input");
 const runBtn = $("run");
+const voiceBtn = $("voiceInput");
+const voiceStateEl = $("voiceState");
 const loadEl = $("loading");
 const errEl = $("error");
 const resEl = $("results");
@@ -399,6 +421,10 @@ const BUILT_IN_ANTHROPIC_API_KEY = "";
 
 let direction = "zh2ja";
 let zhVoice = null;
+let recognition = null;
+let isListening = false;
+let voiceBaseText = "";
+let voiceFinalText = "";
 
 function hasClaudeRuntime(){
   return Boolean(window.claude && typeof window.claude.complete === "function");
@@ -510,11 +536,13 @@ async function callModel(text, dir){
 }
 
 function setDirection(next){
+  stopVoiceInput();
   direction = next;
   const zh = next === "zh2ja";
   dirZhBtn.setAttribute("aria-pressed", String(zh));
   dirJaBtn.setAttribute("aria-pressed", String(!zh));
   inputLabel.textContent = zh ? "中国語の文章" : "日本語の文章";
+  voiceBtn.textContent = zh ? "中国語で音声入力" : "日本語で音声入力";
   inputEl.classList.toggle("hanzi", zh);
   inputEl.placeholder = zh
     ? "例: 你好，我想喝一杯咖啡。"
@@ -615,6 +643,91 @@ function speak(text, btn){
   speechSynthesis.speak(utterance);
 }
 
+function speechRecognitionCtor(){
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function voiceLanguage(){
+  return direction === "zh2ja" ? "zh-CN" : "ja-JP";
+}
+
+function setVoiceState(text, active=false){
+  voiceStateEl.textContent = text;
+  voiceStateEl.classList.toggle("active", active);
+  voiceBtn.classList.toggle("listening", active);
+}
+
+function joinVoiceText(base, transcript){
+  const cleanBase = String(base || "").trimEnd();
+  const cleanTranscript = String(transcript || "").trim();
+  if (!cleanBase) return cleanTranscript;
+  if (!cleanTranscript) return cleanBase;
+  return `${cleanBase}\n${cleanTranscript}`;
+}
+
+function stopVoiceInput(){
+  if (recognition && isListening){
+    recognition.stop();
+  }
+}
+
+function startVoiceInput(){
+  const Recognition = speechRecognitionCtor();
+  errEl.classList.remove("show");
+
+  if (!Recognition){
+    showError("このブラウザは音声入力に対応していません。iPhoneではSafari、PCではChromeやEdgeで試してください。");
+    return;
+  }
+
+  if (isListening){
+    stopVoiceInput();
+    return;
+  }
+
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  recognition = new Recognition();
+  recognition.lang = voiceLanguage();
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.maxAlternatives = 1;
+
+  voiceBaseText = inputEl.value;
+  voiceFinalText = "";
+
+  recognition.onstart = () => {
+    isListening = true;
+    setVoiceState(`${direction === "zh2ja" ? "中国語" : "日本語"}を聞き取っています`, true);
+  };
+
+  recognition.onresult = event => {
+    let interim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++){
+      const piece = event.results[i][0] ? event.results[i][0].transcript : "";
+      if (event.results[i].isFinal){
+        voiceFinalText += piece;
+      }else{
+        interim += piece;
+      }
+    }
+    inputEl.value = joinVoiceText(voiceBaseText, voiceFinalText + interim);
+  };
+
+  recognition.onerror = event => {
+    const message = event.error === "not-allowed"
+      ? "マイクの使用が許可されませんでした。ブラウザのマイク許可を確認してください。"
+      : `音声入力でエラーが起きました: ${event.error}`;
+    showError(message);
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    setVoiceState(voiceFinalText ? "音声入力を反映しました" : "", false);
+  };
+
+  recognition.start();
+}
+
 function normalizedData(data){
   return {
     translation: String(data.translation || ""),
@@ -713,6 +826,7 @@ apiKeyEl.addEventListener("input", () => {
 });
 rememberKeyEl.addEventListener("change", persistKeyPreference);
 runBtn.addEventListener("click", run);
+voiceBtn.addEventListener("click", startVoiceInput);
 inputEl.addEventListener("keydown", event => {
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") run();
 });
