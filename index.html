@@ -7,6 +7,9 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#c8442e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="中文解析">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   :root{
     --ink:#1a1410;
@@ -30,7 +33,7 @@
       BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
     line-height:1.7;
   }
-  .wrap{max-width:960px;margin:0 auto}
+  .wrap{max-width:980px;margin:0 auto}
   .hanzi{font-family:"Songti SC","SimSun","Noto Serif SC",serif}
   header{
     border-bottom:2px solid var(--ink);
@@ -56,12 +59,7 @@
     font-weight:800;
     line-height:1;
   }
-  h1{
-    margin:0;
-    font-size:clamp(1.3rem,4vw,1.95rem);
-    line-height:1.25;
-    letter-spacing:0;
-  }
+  h1{margin:0;font-size:clamp(1.3rem,4vw,1.95rem);line-height:1.25;letter-spacing:0}
   .sub{margin:2px 0 0;color:var(--muted);font-size:.92rem}
   .status{
     border:1px solid var(--line);
@@ -73,12 +71,8 @@
     white-space:nowrap;
   }
   .status.ready{border-color:rgba(47,111,94,.35);color:var(--jade)}
-  .panel{
-    display:grid;
-    gap:14px;
-    margin-bottom:26px;
-  }
-  .api-panel{
+  .panel{display:grid;gap:14px;margin-bottom:26px}
+  .api-panel,.study-panel{
     display:grid;
     gap:10px;
     border:1px solid var(--line);
@@ -86,16 +80,14 @@
     background:var(--surface);
     padding:12px;
   }
-  .api-row{
+  .api-row,.study-row{
     display:grid;
-    grid-template-columns:minmax(170px,1fr) minmax(180px,1fr);
+    grid-template-columns:repeat(2,minmax(170px,1fr));
     gap:10px;
   }
   .field{display:grid;gap:5px}
   .field label{margin:0;font-size:.82rem;color:var(--muted)}
-  input[type="password"],
-  input[type="text"],
-  select{
+  input[type="password"],input[type="text"],select{
     width:100%;
     border:1.5px solid var(--line);
     border-radius:6px;
@@ -104,18 +96,12 @@
     padding:.58rem .68rem;
     font:inherit;
   }
-  input:focus,
-  select:focus{outline:3px solid rgba(176,136,56,.45);outline-offset:1px}
-  .check{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    color:var(--muted);
-    font-size:.84rem;
-  }
+  input:focus,select:focus,textarea:focus{outline:3px solid rgba(176,136,56,.45);outline-offset:1px}
+  .checks{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .check{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.84rem}
   .check input{width:16px;height:16px}
-  .api-note{margin:0;color:var(--muted);font-size:.8rem}
-  .dir{
+  .note{margin:0;color:var(--muted);font-size:.8rem}
+  .dir,.tabs{
     display:inline-flex;
     width:max-content;
     border:1.5px solid var(--ink);
@@ -123,7 +109,7 @@
     overflow:hidden;
     background:var(--surface);
   }
-  .dir button{
+  .dir button,.tabs button{
     appearance:none;
     border:0;
     border-radius:0;
@@ -134,7 +120,7 @@
     font-size:.92rem;
     cursor:pointer;
   }
-  .dir button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+  .dir button[aria-pressed="true"],.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
   label{display:block;font-weight:700;margin-bottom:6px}
   textarea{
     display:block;
@@ -149,49 +135,27 @@
     font-size:1.1rem;
     line-height:1.85;
   }
-  textarea:focus{outline:3px solid rgba(176,136,56,.55);outline-offset:1px}
   .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  button.action{
+  button.action,button.secondary,button.ghost{
     appearance:none;
-    border:0;
     border-radius:6px;
-    background:var(--vermilion);
-    color:var(--paper);
-    padding:.72rem 1.35rem;
-    font-size:1rem;
-    font-weight:800;
-    cursor:pointer;
-  }
-  button.secondary{
-    appearance:none;
-    border:1.5px solid var(--jade);
-    border-radius:6px;
-    background:var(--surface);
-    color:var(--jade);
-    padding:.62rem .95rem;
+    padding:.68rem .95rem;
     font-size:.95rem;
     font-weight:800;
     cursor:pointer;
   }
-  button.secondary:hover:not(:disabled){background:rgba(47,111,94,.08)}
-  button.secondary.listening{
-    background:var(--jade);
-    color:var(--paper);
-  }
+  button.action{border:0;background:var(--vermilion);color:var(--paper);padding:.72rem 1.35rem;font-size:1rem}
+  button.secondary{border:1.5px solid var(--jade);background:var(--surface);color:var(--jade)}
+  button.ghost{border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+  button.secondary:hover:not(:disabled),button.ghost:hover:not(:disabled){background:rgba(47,111,94,.08)}
+  button.secondary.listening{background:var(--jade);color:var(--paper)}
   button.action:hover:not(:disabled){filter:brightness(1.07)}
-  button.action:active:not(:disabled){transform:translateY(1px)}
+  button.action:active:not(:disabled),button.secondary:active:not(:disabled),button.ghost:active:not(:disabled){transform:translateY(1px)}
   button:disabled{opacity:.55;cursor:not-allowed}
   button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
-  .hint{color:var(--muted);font-size:.82rem}
-  .voice-state{color:var(--muted);font-size:.82rem}
+  .hint,.voice-state{color:var(--muted);font-size:.82rem}
   .voice-state.active{color:var(--jade);font-weight:700}
-  .loading{
-    display:none;
-    align-items:center;
-    gap:.6rem;
-    color:var(--jade);
-    font-weight:700;
-  }
+  .loading{display:none;align-items:center;gap:.6rem;color:var(--jade);font-weight:700}
   .loading.show{display:flex}
   .spinner{
     width:18px;
@@ -215,13 +179,7 @@
   .error b{color:var(--bad)}
   #results{display:grid;gap:26px;margin-top:28px}
   .block{min-width:0}
-  .block-head{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:10px;
-  }
+  .block-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .eyebrow{
     display:inline-block;
     color:var(--vermilion);
@@ -232,12 +190,7 @@
     letter-spacing:.16em;
     text-transform:uppercase;
   }
-  .translation{
-    margin:0;
-    font-size:1.15rem;
-    line-height:1.9;
-    overflow-wrap:anywhere;
-  }
+  .translation{margin:0;font-size:1.15rem;line-height:1.9;overflow-wrap:anywhere}
   .native{
     margin:0;
     padding:14px 16px;
@@ -249,18 +202,10 @@
     line-height:2;
     overflow-wrap:anywhere;
   }
-  .sandhi{
-    color:var(--gold);
-    font-weight:800;
-    border-bottom:2px dotted var(--gold);
-  }
+  .sandhi{color:var(--gold);font-weight:800;border-bottom:2px dotted var(--gold)}
   .legend{margin:.55rem 0 0;color:var(--muted);font-size:.82rem}
-  .cards{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-    gap:12px;
-  }
-  .card{
+  .cards,.saved-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+  .card,.saved-item{
     min-width:0;
     border:1px solid var(--line);
     border-top:3px solid var(--jade);
@@ -268,12 +213,7 @@
     background:var(--surface);
     padding:12px;
   }
-  .card-top{
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:8px;
-  }
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
   .zh{font-size:1.62rem;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
   .py{margin-top:2px;color:var(--vermilion);font-weight:800;overflow-wrap:anywhere}
   .mean{margin-top:8px;font-size:.94rem;overflow-wrap:anywhere}
@@ -287,7 +227,8 @@
     font-size:.72rem;
     font-weight:700;
   }
-  .speak{
+  .icon-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .speak,.icon-btn{
     appearance:none;
     display:inline-flex;
     align-items:center;
@@ -303,24 +244,33 @@
     font-size:1rem;
     line-height:1;
   }
-  .speak:hover{background:var(--jade);color:var(--paper)}
-  .speak.speaking{background:var(--jade);color:var(--paper)}
-  .speak-sm{width:29px;height:29px;font-size:.86rem}
-  footer{
-    margin-top:38px;
+  .icon-btn{border-color:var(--line);color:var(--ink)}
+  .speak:hover,.speak.speaking{background:var(--jade);color:var(--paper)}
+  .icon-btn:hover,.icon-btn.active{background:var(--gold);border-color:var(--gold);color:var(--paper)}
+  .speak-sm,.icon-sm{width:29px;height:29px;font-size:.86rem}
+  .examples{
+    margin-top:10px;
     border-top:1px solid var(--line);
-    padding-top:12px;
-    color:var(--muted);
-    font-size:.8rem;
+    padding-top:10px;
+    display:grid;
+    gap:8px;
+    font-size:.9rem;
   }
+  .example-line{margin:0}
+  .saved-item button{margin-top:8px}
+  .history-text{font-size:.92rem;line-height:1.6;overflow-wrap:anywhere}
+  .hide-pinyin .py,.hide-pinyin .native,.hide-pinyin .legend{display:none}
+  .hide-meaning .mean{display:none}
+  .hide-translation .translation-output{display:none}
+  footer{margin-top:38px;border-top:1px solid var(--line);padding-top:12px;color:var(--muted);font-size:.8rem}
   @media (max-width:540px){
     body{padding:14px}
     header{align-items:flex-start}
     .status{white-space:normal}
-    .dir{display:grid;grid-template-columns:1fr 1fr;width:100%}
-    .dir button{padding:.55rem .5rem}
-    .cards{grid-template-columns:1fr}
-    .api-row{grid-template-columns:1fr}
+    .dir,.tabs{display:grid;grid-template-columns:1fr 1fr;width:100%}
+    .dir button,.tabs button{padding:.55rem .5rem}
+    .cards,.saved-list{grid-template-columns:1fr}
+    .api-row,.study-row{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -331,10 +281,10 @@
       <span class="seal hanzi">解</span>
       <div>
         <h1>中文解析</h1>
-        <p class="sub">翻訳、ピンイン、声調変化、語彙をまとめて確認</p>
+        <p class="sub">翻訳、ピンイン、声調変化、語彙、復習をまとめて確認</p>
       </div>
     </div>
-    <div class="status" id="runtimeStatus">Claude接続を確認中</div>
+    <div class="status" id="runtimeStatus">AI接続を確認中</div>
   </header>
 
   <main>
@@ -363,11 +313,36 @@
           <label for="apiKey">Anthropic APIキー</label>
           <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off">
         </div>
-        <label class="check" for="rememberKey">
-          <input id="rememberKey" type="checkbox">
-          このブラウザにAPIキーを保存する
-        </label>
-        <p class="api-note">通常ブラウザで使う場合だけAPIキーを入力してください。保存しない場合、キーはこのページを開いている間だけ使います。</p>
+        <div class="controls">
+          <label class="check" for="rememberKey">
+            <input id="rememberKey" type="checkbox">
+            このブラウザにAPIキーを保存する
+          </label>
+          <button id="clearKey" class="ghost" type="button">保存キーを削除</button>
+        </div>
+        <p class="note">通常ブラウザで使う場合だけAPIキーを入力してください。保存しない場合、キーはこのページを開いている間だけ使います。</p>
+      </div>
+
+      <div class="study-panel" aria-label="学習設定">
+        <div class="study-row">
+          <div class="field">
+            <label for="speechRate">読み上げ速度</label>
+            <select id="speechRate">
+              <option value="0.7">ゆっくり 0.7x</option>
+              <option value="0.9" selected>標準 0.9x</option>
+              <option value="1">自然 1.0x</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>表示</label>
+            <div class="checks">
+              <label class="check"><input id="hidePinyin" type="checkbox">ピンインを隠す</label>
+              <label class="check"><input id="hideMeaning" type="checkbox">意味を隠す</label>
+              <label class="check"><input id="hideTranslation" type="checkbox">訳を隠す</label>
+            </div>
+          </div>
+        </div>
+        <label class="check"><input id="autoAnalyzeVoice" type="checkbox">音声入力後に自動で解析する</label>
       </div>
 
       <div>
@@ -378,6 +353,7 @@
       <div class="controls">
         <button id="run" class="action" type="button">解析する</button>
         <button id="voiceInput" class="secondary" type="button">中国語で音声入力</button>
+        <button id="copyResult" class="ghost" type="button">結果をコピー</button>
         <span class="hint">Ctrl + Enter でも実行</span>
         <span id="voiceState" class="voice-state"></span>
       </div>
@@ -387,6 +363,14 @@
         <span>解析中です</span>
       </div>
       <div class="error" id="error" role="alert"></div>
+    </section>
+
+    <section class="panel" aria-label="保存データ">
+      <div class="tabs" role="group" aria-label="保存データの表示">
+        <button id="tabResults" type="button" aria-pressed="true">解析結果</button>
+        <button id="tabHistory" type="button" aria-pressed="false">履歴</button>
+        <button id="tabFavorites" type="button" aria-pressed="false">単語帳</button>
+      </div>
     </section>
 
     <section id="results" aria-live="polite"></section>
@@ -412,11 +396,21 @@ const runtimeModeEl = $("runtimeMode");
 const modelNameEl = $("modelName");
 const apiKeyEl = $("apiKey");
 const rememberKeyEl = $("rememberKey");
+const clearKeyBtn = $("clearKey");
+const speechRateEl = $("speechRate");
+const hidePinyinEl = $("hidePinyin");
+const hideMeaningEl = $("hideMeaning");
+const hideTranslationEl = $("hideTranslation");
+const autoAnalyzeVoiceEl = $("autoAnalyzeVoice");
+const copyResultBtn = $("copyResult");
+const tabResultsBtn = $("tabResults");
+const tabHistoryBtn = $("tabHistory");
+const tabFavoritesBtn = $("tabFavorites");
 
-const STORAGE_KEY = "trancerate.anthropicApiKey";
-// 個人利用でスマホから開きたい場合は、次の空文字にAnthropic APIキーを入れます。
-// 例: const BUILT_IN_ANTHROPIC_API_KEY = "sk-ant-...";
-// 公開URLに置くとキーも見えるため、自分だけが開く場所で使ってください。
+const KEY_API = "trancerate.anthropicApiKey";
+const KEY_HISTORY = "trancerate.history";
+const KEY_FAVORITES = "trancerate.favorites";
+const KEY_PREFS = "trancerate.preferences";
 const BUILT_IN_ANTHROPIC_API_KEY = "";
 
 let direction = "zh2ja";
@@ -425,9 +419,25 @@ let recognition = null;
 let isListening = false;
 let voiceBaseText = "";
 let voiceFinalText = "";
+let lastResult = null;
+let lastOriginalText = "";
+let activeTab = "results";
 
 function hasClaudeRuntime(){
   return Boolean(window.claude && typeof window.claude.complete === "function");
+}
+
+function readJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(_err){
+    return fallback;
+  }
+}
+
+function writeJSON(key, value){
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 function updateRuntimeStatus(){
@@ -446,7 +456,7 @@ function updateRuntimeStatus(){
 }
 
 function loadSavedKey(){
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = localStorage.getItem(KEY_API);
   if (BUILT_IN_ANTHROPIC_API_KEY){
     apiKeyEl.value = BUILT_IN_ANTHROPIC_API_KEY;
     apiKeyEl.placeholder = "コード内APIキーを使用中";
@@ -461,10 +471,17 @@ function persistKeyPreference(){
   if (BUILT_IN_ANTHROPIC_API_KEY) return;
   const key = apiKeyEl.value.trim();
   if (rememberKeyEl.checked && key){
-    localStorage.setItem(STORAGE_KEY, key);
+    localStorage.setItem(KEY_API, key);
   }else{
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(KEY_API);
   }
+}
+
+function clearSavedKey(){
+  localStorage.removeItem(KEY_API);
+  apiKeyEl.value = "";
+  rememberKeyEl.checked = false;
+  updateRuntimeStatus();
 }
 
 function selectedRuntime(){
@@ -478,77 +495,6 @@ function selectedRuntime(){
 
 function selectedModel(){
   return modelNameEl.value.trim() || "claude-sonnet-4-6";
-}
-
-async function callAnthropicAPI(text, dir){
-  const key = apiKeyEl.value.trim();
-  if (!key){
-    throw new Error("Anthropic APIキーを入力するか、Claude環境で実行してください。");
-  }
-  persistKeyPreference();
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: selectedModel(),
-      max_tokens: 1400,
-      system: buildSystemPrompt(dir),
-      messages: [{ role: "user", content: buildUserPrompt(text, dir) }]
-    })
-  });
-
-  if (!response.ok){
-    let detail = "";
-    try{
-      const errorBody = await response.json();
-      detail = errorBody.error && errorBody.error.message ? ` ${errorBody.error.message}` : "";
-    }catch(_err){}
-    throw new Error(`Anthropic APIが ${response.status} を返しました。${detail}`);
-  }
-
-  const data = await response.json();
-  return (data.content || [])
-    .map(block => block.type === "text" ? block.text : "")
-    .join("\n");
-}
-
-async function callModel(text, dir){
-  const runtime = selectedRuntime();
-  if (runtime === "claude"){
-    if (!hasClaudeRuntime()){
-      throw new Error("Claude環境が検出できません。実行モードを「Anthropic APIキー」に切り替えるか、Claude内で開いてください。");
-    }
-    const prompt = `${buildSystemPrompt(dir)}\n\n${buildUserPrompt(text, dir)}`;
-    return window.claude.complete(prompt);
-  }
-
-  if (runtime === "anthropic"){
-    return callAnthropicAPI(text, dir);
-  }
-
-  throw new Error("Claude環境が見つかりません。通常ブラウザで使う場合はAnthropic APIキーを入力してください。");
-}
-
-function setDirection(next){
-  stopVoiceInput();
-  direction = next;
-  const zh = next === "zh2ja";
-  dirZhBtn.setAttribute("aria-pressed", String(zh));
-  dirJaBtn.setAttribute("aria-pressed", String(!zh));
-  inputLabel.textContent = zh ? "中国語の文章" : "日本語の文章";
-  voiceBtn.textContent = zh ? "中国語で音声入力" : "日本語で音声入力";
-  inputEl.classList.toggle("hanzi", zh);
-  inputEl.placeholder = zh
-    ? "例: 你好，我想喝一杯咖啡。"
-    : "例: 明日の朝、駅で友だちと会います。";
-  resEl.innerHTML = "";
-  errEl.classList.remove("show");
 }
 
 function buildSystemPrompt(dir){
@@ -588,6 +534,71 @@ function buildUserPrompt(text, dir){
     : `次の日本語を中国語へ翻訳し、翻訳後の中国語を解析してください:\n${text}`;
 }
 
+function buildExamplePrompt(word){
+  return `次の中国語単語を使った短い例文を3つ作ってください。JSONのみで返してください。
+単語: ${word.zh}
+ピンイン: ${word.pinyin}
+意味: ${word.meaning}
+
+{
+  "examples": [
+    { "zh": "中国語例文", "pinyin": "声調記号付きピンイン", "ja": "日本語訳" }
+  ]
+}`;
+}
+
+async function callAnthropicAPI(system, user, maxTokens=1400){
+  const key = apiKeyEl.value.trim();
+  if (!key){
+    throw new Error("Anthropic APIキーを入力するか、Claude環境で実行してください。");
+  }
+  persistKeyPreference();
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: selectedModel(),
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+
+  if (!response.ok){
+    let detail = "";
+    try{
+      const errorBody = await response.json();
+      detail = errorBody.error && errorBody.error.message ? ` ${errorBody.error.message}` : "";
+    }catch(_err){}
+    throw new Error(`Anthropic APIが ${response.status} を返しました。${detail}`);
+  }
+
+  const data = await response.json();
+  return (data.content || [])
+    .map(block => block.type === "text" ? block.text : "")
+    .join("\n");
+}
+
+async function callModel(system, user, maxTokens=1400){
+  const runtime = selectedRuntime();
+  if (runtime === "claude"){
+    if (!hasClaudeRuntime()){
+      throw new Error("Claude環境が検出できません。実行モードを「Anthropic APIキー」に切り替えるか、Claude内で開いてください。");
+    }
+    return window.claude.complete(`${system}\n\n${user}`);
+  }
+  if (runtime === "anthropic"){
+    return callAnthropicAPI(system, user, maxTokens);
+  }
+  throw new Error("Claude環境が見つかりません。通常ブラウザで使う場合はAnthropic APIキーを入力してください。");
+}
+
 function parseModelJSON(raw){
   let s = String(raw || "").trim();
   s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
@@ -611,6 +622,21 @@ function showError(message){
   errEl.classList.add("show");
 }
 
+function setDirection(next){
+  stopVoiceInput();
+  direction = next;
+  const zh = next === "zh2ja";
+  dirZhBtn.setAttribute("aria-pressed", String(zh));
+  dirJaBtn.setAttribute("aria-pressed", String(!zh));
+  inputLabel.textContent = zh ? "中国語の文章" : "日本語の文章";
+  voiceBtn.textContent = zh ? "中国語で音声入力" : "日本語で音声入力";
+  inputEl.classList.toggle("hanzi", zh);
+  inputEl.placeholder = zh
+    ? "例: 你好，我想喝一杯咖啡。"
+    : "例: 明日の朝、駅で友だちと会います。";
+  errEl.classList.remove("show");
+}
+
 function pickChineseVoice(){
   if (!window.speechSynthesis) return;
   const voices = speechSynthesis.getVoices();
@@ -629,7 +655,7 @@ function speak(text, btn){
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "zh-CN";
-  utterance.rate = 0.9;
+  utterance.rate = Number(speechRateEl.value) || 0.9;
   if (zhVoice) utterance.voice = zhVoice;
 
   const clear = () => document.querySelectorAll(".speak.speaking")
@@ -674,24 +700,20 @@ function stopVoiceInput(){
 function startVoiceInput(){
   const Recognition = speechRecognitionCtor();
   errEl.classList.remove("show");
-
   if (!Recognition){
     showError("このブラウザは音声入力に対応していません。iPhoneではSafari、PCではChromeやEdgeで試してください。");
     return;
   }
-
   if (isListening){
     stopVoiceInput();
     return;
   }
-
   if (window.speechSynthesis) speechSynthesis.cancel();
   recognition = new Recognition();
   recognition.lang = voiceLanguage();
   recognition.interimResults = true;
   recognition.continuous = false;
   recognition.maxAlternatives = 1;
-
   voiceBaseText = inputEl.value;
   voiceFinalText = "";
 
@@ -699,7 +721,6 @@ function startVoiceInput(){
     isListening = true;
     setVoiceState(`${direction === "zh2ja" ? "中国語" : "日本語"}を聞き取っています`, true);
   };
-
   recognition.onresult = event => {
     let interim = "";
     for (let i = event.resultIndex; i < event.results.length; i++){
@@ -712,19 +733,19 @@ function startVoiceInput(){
     }
     inputEl.value = joinVoiceText(voiceBaseText, voiceFinalText + interim);
   };
-
   recognition.onerror = event => {
     const message = event.error === "not-allowed"
       ? "マイクの使用が許可されませんでした。ブラウザのマイク許可を確認してください。"
       : `音声入力でエラーが起きました: ${event.error}`;
     showError(message);
   };
-
   recognition.onend = () => {
     isListening = false;
     setVoiceState(voiceFinalText ? "音声入力を反映しました" : "", false);
+    if (voiceFinalText && autoAnalyzeVoiceEl.checked){
+      run();
+    }
   };
-
   recognition.start();
 }
 
@@ -736,31 +757,124 @@ function normalizedData(data){
   };
 }
 
-function render(data, originalText){
-  const clean = normalizedData(data);
-  const chineseText = direction === "zh2ja" ? originalText : clean.translation;
-  const sourceLabel = direction === "zh2ja" ? "原文" : "入力文";
-  const translationLabel = direction === "zh2ja" ? "日本語訳" : "中国語訳";
+function favoriteKey(word){
+  return `${word.zh}|${word.pinyin}`;
+}
 
-  const nativeLine = clean.native_pinyin.map(item => {
+function getFavorites(){
+  return readJSON(KEY_FAVORITES, []);
+}
+
+function isFavorite(word){
+  const key = favoriteKey(word);
+  return getFavorites().some(item => favoriteKey(item) === key);
+}
+
+function toggleFavorite(index){
+  if (!lastResult || !lastResult.words[index]) return;
+  const word = lastResult.words[index];
+  const key = favoriteKey(word);
+  let favorites = getFavorites();
+  if (favorites.some(item => favoriteKey(item) === key)){
+    favorites = favorites.filter(item => favoriteKey(item) !== key);
+  }else{
+    favorites.unshift({ ...word, savedAt: Date.now() });
+  }
+  writeJSON(KEY_FAVORITES, favorites.slice(0, 200));
+  renderActiveTab();
+}
+
+function addHistory(originalText, data){
+  const item = {
+    id: String(Date.now()),
+    at: Date.now(),
+    direction,
+    originalText,
+    data: normalizedData(data)
+  };
+  const history = readJSON(KEY_HISTORY, []);
+  writeJSON(KEY_HISTORY, [item, ...history].slice(0, 50));
+}
+
+function restoreHistory(id){
+  const item = readJSON(KEY_HISTORY, []).find(entry => entry.id === id);
+  if (!item) return;
+  setDirection(item.direction);
+  inputEl.value = item.originalText;
+  lastOriginalText = item.originalText;
+  lastResult = item.data;
+  setActiveTab("results");
+}
+
+function deleteHistory(id){
+  writeJSON(KEY_HISTORY, readJSON(KEY_HISTORY, []).filter(entry => entry.id !== id));
+  renderHistory();
+}
+
+function formatDate(ts){
+  return new Date(ts).toLocaleString("ja-JP", { month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+}
+
+function nativeLineHTML(native){
+  return native.map(item => {
     const py = esc(item.py);
     return item.sandhi
       ? `<span class="sandhi" title="声調変化あり">${py}</span>`
       : `<span>${py}</span>`;
   }).join(" ");
+}
 
-  const cards = clean.words.map(word => `
+function wordCardHTML(word, index){
+  const fav = isFavorite(word);
+  const examples = Array.isArray(word.examples) ? word.examples : [];
+  const examplesHTML = examples.length ? `
+    <div class="examples">
+      ${examples.map(ex => `
+        <p class="example-line hanzi">${esc(ex.zh)}</p>
+        <p class="example-line py">${esc(ex.pinyin)}</p>
+        <p class="example-line mean">${esc(ex.ja)}</p>`).join("")}
+    </div>` : "";
+
+  return `
     <article class="card">
       <div class="card-top">
         <div>
           <div class="zh hanzi">${esc(word.zh)}</div>
           <div class="py">${esc(word.pinyin)}</div>
         </div>
-        <button class="speak speak-sm" type="button" data-say="${esc(word.zh)}" aria-label="${esc(word.zh)}を読み上げ" title="読み上げ">▶</button>
+        <div class="icon-row">
+          <button class="speak speak-sm" type="button" data-say="${esc(word.zh)}" aria-label="${esc(word.zh)}を読み上げ" title="読み上げ">▶</button>
+          <button class="icon-btn icon-sm ${fav ? "active" : ""}" type="button" data-fav-index="${index}" aria-label="単語帳に保存" title="単語帳">☆</button>
+        </div>
       </div>
       <div class="mean">${esc(word.meaning)}</div>
       <span class="pos">${esc(word.pos)}</span>
-    </article>`).join("");
+      <div class="controls" style="margin-top:10px">
+        <button class="ghost" type="button" data-example-index="${index}">例文</button>
+      </div>
+      ${examplesHTML}
+    </article>`;
+}
+
+function render(data, originalText, save=true){
+  const clean = normalizedData(data);
+  lastResult = clean;
+  lastOriginalText = originalText;
+  activeTab = "results";
+  if (save) addHistory(originalText, clean);
+  renderActiveTab();
+}
+
+function renderResults(){
+  if (!lastResult){
+    resEl.innerHTML = `<p class="translation">まだ解析結果はありません。</p>`;
+    return;
+  }
+  const clean = normalizedData(lastResult);
+  const chineseText = direction === "zh2ja" ? lastOriginalText : clean.translation;
+  const sourceLabel = direction === "zh2ja" ? "原文" : "入力文";
+  const translationLabel = direction === "zh2ja" ? "日本語訳" : "中国語訳";
+  const cards = clean.words.map((word, index) => wordCardHTML(word, index)).join("");
 
   resEl.innerHTML = `
     <div class="block">
@@ -768,10 +882,10 @@ function render(data, originalText){
         <span class="eyebrow">${sourceLabel}</span>
         ${direction === "zh2ja" ? `<button class="speak" type="button" data-say="${esc(chineseText)}" aria-label="全文を読み上げ" title="全文を読み上げ">▶</button>` : ""}
       </div>
-      <p class="translation ${direction === "zh2ja" ? "hanzi" : ""}">${esc(originalText)}</p>
+      <p class="translation ${direction === "zh2ja" ? "hanzi" : ""}">${esc(lastOriginalText)}</p>
     </div>
 
-    <div class="block">
+    <div class="block translation-output">
       <div class="block-head">
         <span class="eyebrow">${translationLabel}</span>
         ${direction === "ja2zh" ? `<button class="speak" type="button" data-say="${esc(chineseText)}" aria-label="中国語訳を読み上げ" title="中国語訳を読み上げ">▶</button>` : ""}
@@ -781,7 +895,7 @@ function render(data, originalText){
 
     <div class="block">
       <span class="eyebrow">ネイティブ読み</span>
-      <p class="native hanzi">${nativeLine || "ピンインが返されませんでした。"}</p>
+      <p class="native hanzi">${nativeLineHTML(clean.native_pinyin) || "ピンインが返されませんでした。"}</p>
       <p class="legend"><span class="sandhi">下線付きの金色</span> = 実際の発音で声調が変化した箇所</p>
     </div>
 
@@ -791,30 +905,160 @@ function render(data, originalText){
     </div>`;
 }
 
+function renderHistory(){
+  const history = readJSON(KEY_HISTORY, []);
+  if (!history.length){
+    resEl.innerHTML = `<p class="translation">履歴はまだありません。</p>`;
+    return;
+  }
+  resEl.innerHTML = `
+    <div class="block">
+      <div class="block-head">
+        <span class="eyebrow">履歴</span>
+        <button class="ghost" type="button" data-clear-history="1">履歴を消去</button>
+      </div>
+      <div class="saved-list">
+        ${history.map(item => `
+          <article class="saved-item">
+            <div class="pos">${formatDate(item.at)} / ${item.direction === "zh2ja" ? "中→日" : "日→中"}</div>
+            <div class="history-text">${esc(item.originalText)}</div>
+            <button class="secondary" type="button" data-history-id="${esc(item.id)}">開く</button>
+            <button class="ghost" type="button" data-delete-history="${esc(item.id)}">削除</button>
+          </article>`).join("")}
+      </div>
+    </div>`;
+}
+
+function renderFavorites(){
+  const favorites = getFavorites();
+  if (!favorites.length){
+    resEl.innerHTML = `<p class="translation">単語帳はまだ空です。単語カードの☆で保存できます。</p>`;
+    return;
+  }
+  resEl.innerHTML = `
+    <div class="block">
+      <div class="block-head">
+        <span class="eyebrow">単語帳</span>
+        <button class="ghost" type="button" data-clear-favorites="1">単語帳を空にする</button>
+      </div>
+      <div class="cards">
+        ${favorites.map((word, index) => `
+          <article class="card">
+            <div class="card-top">
+              <div>
+                <div class="zh hanzi">${esc(word.zh)}</div>
+                <div class="py">${esc(word.pinyin)}</div>
+              </div>
+              <button class="speak speak-sm" type="button" data-say="${esc(word.zh)}" aria-label="${esc(word.zh)}を読み上げ" title="読み上げ">▶</button>
+            </div>
+            <div class="mean">${esc(word.meaning)}</div>
+            <span class="pos">${esc(word.pos)}</span>
+            <button class="ghost" type="button" data-remove-fav="${index}">削除</button>
+          </article>`).join("")}
+      </div>
+    </div>`;
+}
+
+function setActiveTab(tab){
+  activeTab = tab;
+  tabResultsBtn.setAttribute("aria-pressed", String(tab === "results"));
+  tabHistoryBtn.setAttribute("aria-pressed", String(tab === "history"));
+  tabFavoritesBtn.setAttribute("aria-pressed", String(tab === "favorites"));
+  renderActiveTab();
+}
+
+function renderActiveTab(){
+  document.body.classList.toggle("hide-pinyin", hidePinyinEl.checked);
+  document.body.classList.toggle("hide-meaning", hideMeaningEl.checked);
+  document.body.classList.toggle("hide-translation", hideTranslationEl.checked);
+  if (activeTab === "history") renderHistory();
+  else if (activeTab === "favorites") renderFavorites();
+  else renderResults();
+}
+
+function resultText(){
+  if (!lastResult) return "";
+  const clean = normalizedData(lastResult);
+  const lines = [
+    `入力: ${lastOriginalText}`,
+    `翻訳: ${clean.translation}`,
+    "",
+    "読み:",
+    clean.native_pinyin.map(item => item.py).join(" "),
+    "",
+    "単語:",
+    ...clean.words.map(word => `${word.zh} / ${word.pinyin} / ${word.meaning} / ${word.pos}`)
+  ];
+  return lines.join("\n");
+}
+
+async function copyResult(){
+  const text = resultText();
+  if (!text){
+    showError("コピーできる解析結果がまだありません。");
+    return;
+  }
+  await navigator.clipboard.writeText(text);
+  copyResultBtn.textContent = "コピー済み";
+  setTimeout(() => { copyResultBtn.textContent = "結果をコピー"; }, 1200);
+}
+
+async function generateExamples(index){
+  if (!lastResult || !lastResult.words[index]) return;
+  const word = lastResult.words[index];
+  const btn = document.querySelector(`[data-example-index="${index}"]`);
+  if (btn) btn.disabled = true;
+  try{
+    const raw = await callModel("あなたは中国語学習用の例文作成エンジンです。返答はJSONのみです。", buildExamplePrompt(word), 900);
+    const parsed = parseModelJSON(raw);
+    lastResult.words[index].examples = Array.isArray(parsed.examples) ? parsed.examples : [];
+    renderActiveTab();
+  }catch(error){
+    showError(`<b>例文を作れませんでした。</b> ${esc(error.message)}`);
+  }finally{
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function run(){
   const text = inputEl.value.trim();
   errEl.classList.remove("show");
-  resEl.innerHTML = "";
-
   if (!text){
     showError("解析する文章を入力してください。");
     return;
   }
-
   runBtn.disabled = true;
   loadEl.classList.add("show");
   if (window.speechSynthesis) speechSynthesis.cancel();
-
   try{
-    const raw = await callModel(text, direction);
+    const raw = await callModel(buildSystemPrompt(direction), buildUserPrompt(text, direction));
     const parsed = parseModelJSON(raw);
-    render(parsed, text);
+    render(parsed, text, true);
   }catch(error){
     showError(`<b>解析できませんでした。</b> ${esc(error.message)}`);
   }finally{
     runBtn.disabled = false;
     loadEl.classList.remove("show");
   }
+}
+
+function savePrefs(){
+  writeJSON(KEY_PREFS, {
+    speechRate: speechRateEl.value,
+    hidePinyin: hidePinyinEl.checked,
+    hideMeaning: hideMeaningEl.checked,
+    hideTranslation: hideTranslationEl.checked,
+    autoAnalyzeVoice: autoAnalyzeVoiceEl.checked
+  });
+}
+
+function loadPrefs(){
+  const prefs = readJSON(KEY_PREFS, {});
+  if (prefs.speechRate) speechRateEl.value = prefs.speechRate;
+  hidePinyinEl.checked = Boolean(prefs.hidePinyin);
+  hideMeaningEl.checked = Boolean(prefs.hideMeaning);
+  hideTranslationEl.checked = Boolean(prefs.hideTranslation);
+  autoAnalyzeVoiceEl.checked = Boolean(prefs.autoAnalyzeVoice);
 }
 
 dirZhBtn.addEventListener("click", () => setDirection("zh2ja"));
@@ -825,14 +1069,55 @@ apiKeyEl.addEventListener("input", () => {
   updateRuntimeStatus();
 });
 rememberKeyEl.addEventListener("change", persistKeyPreference);
+clearKeyBtn.addEventListener("click", clearSavedKey);
 runBtn.addEventListener("click", run);
 voiceBtn.addEventListener("click", startVoiceInput);
+copyResultBtn.addEventListener("click", copyResult);
+tabResultsBtn.addEventListener("click", () => setActiveTab("results"));
+tabHistoryBtn.addEventListener("click", () => setActiveTab("history"));
+tabFavoritesBtn.addEventListener("click", () => setActiveTab("favorites"));
+[speechRateEl, hidePinyinEl, hideMeaningEl, hideTranslationEl, autoAnalyzeVoiceEl].forEach(el => {
+  el.addEventListener("change", () => {
+    savePrefs();
+    renderActiveTab();
+  });
+});
 inputEl.addEventListener("keydown", event => {
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") run();
 });
 document.addEventListener("click", event => {
-  const button = event.target.closest(".speak");
-  if (button) speak(button.dataset.say, button);
+  const speakBtn = event.target.closest(".speak");
+  if (speakBtn) speak(speakBtn.dataset.say, speakBtn);
+
+  const favBtn = event.target.closest("[data-fav-index]");
+  if (favBtn) toggleFavorite(Number(favBtn.dataset.favIndex));
+
+  const exampleBtn = event.target.closest("[data-example-index]");
+  if (exampleBtn) generateExamples(Number(exampleBtn.dataset.exampleIndex));
+
+  const historyBtn = event.target.closest("[data-history-id]");
+  if (historyBtn) restoreHistory(historyBtn.dataset.historyId);
+
+  const deleteHistoryBtn = event.target.closest("[data-delete-history]");
+  if (deleteHistoryBtn) deleteHistory(deleteHistoryBtn.dataset.deleteHistory);
+
+  const removeFavBtn = event.target.closest("[data-remove-fav]");
+  if (removeFavBtn){
+    const favorites = getFavorites();
+    favorites.splice(Number(removeFavBtn.dataset.removeFav), 1);
+    writeJSON(KEY_FAVORITES, favorites);
+    renderFavorites();
+  }
+
+  if (event.target.closest("[data-clear-history]")){
+    writeJSON(KEY_HISTORY, []);
+    renderHistory();
+  }
+
+  if (event.target.closest("[data-clear-favorites]")){
+    writeJSON(KEY_FAVORITES, []);
+    renderFavorites();
+  }
 });
 
 if (window.speechSynthesis){
@@ -841,8 +1126,10 @@ if (window.speechSynthesis){
 }
 
 loadSavedKey();
+loadPrefs();
 updateRuntimeStatus();
 setDirection("zh2ja");
+renderActiveTab();
 </script>
 </body>
 </html>
