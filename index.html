@@ -580,7 +580,7 @@ function buildUserPrompt(text, dir){
 }
 
 function buildExamplePrompt(word){
-  return `次の中国語単語を使った短い例文を3つ作ってください。JSONのみで返してください。
+  return `次の中国語単語を使った短い例文を3つ作ってください。返答はJSONオブジェクトのみです。説明文やMarkdownは付けないでください。
 単語: ${word.zh}
 ピンイン: ${word.pinyin}
 意味: ${word.meaning}
@@ -590,6 +590,19 @@ function buildExamplePrompt(word){
     { "zh": "中国語例文", "pinyin": "声調記号付きピンイン", "ja": "日本語訳" }
   ]
 }`;
+}
+
+function normalizeExamples(parsed){
+  if (Array.isArray(parsed.examples)){
+    return parsed.examples
+      .filter(item => item && (item.zh || item.pinyin || item.ja))
+      .map(item => ({
+        zh: String(item.zh || ""),
+        pinyin: String(item.pinyin || ""),
+        ja: String(item.ja || item.translation || "")
+      }));
+  }
+  return [];
 }
 
 async function callAnthropicAPI(system, user, maxTokens=1400){
@@ -1077,16 +1090,28 @@ async function generateExamples(index){
   if (!lastResult || !lastResult.words[index]) return;
   const word = lastResult.words[index];
   const btn = document.querySelector(`[data-example-index="${index}"]`);
-  if (btn) btn.disabled = true;
+  if (btn){
+    btn.disabled = true;
+    btn.textContent = "生成中";
+  }
+  errEl.classList.remove("show");
   try{
     const raw = await callModel("あなたは中国語学習用の例文作成エンジンです。返答はJSONのみです。", buildExamplePrompt(word), 900);
     const parsed = parseModelJSON(raw);
-    lastResult.words[index].examples = Array.isArray(parsed.examples) ? parsed.examples : [];
+    const examples = normalizeExamples(parsed);
+    if (!examples.length){
+      throw new Error("例文データが空でした。もう一度押してください。");
+    }
+    lastResult.words[index].examples = examples;
     renderActiveTab();
   }catch(error){
     showError(`<b>例文を作れませんでした。</b> ${esc(error.message)}`);
   }finally{
-    if (btn) btn.disabled = false;
+    const nextBtn = document.querySelector(`[data-example-index="${index}"]`);
+    if (nextBtn){
+      nextBtn.disabled = false;
+      nextBtn.textContent = "例文";
+    }
   }
 }
 
