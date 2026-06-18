@@ -387,6 +387,7 @@
         <button id="tabResults" type="button" aria-pressed="true">解析結果</button>
         <button id="tabHistory" type="button" aria-pressed="false">履歴</button>
         <button id="tabFavorites" type="button" aria-pressed="false">単語帳</button>
+        <button id="tabQuiz" type="button" aria-pressed="false">クイズ</button>
       </div>
     </section>
 
@@ -424,6 +425,7 @@ const copyResultBtn = $("copyResult");
 const tabResultsBtn = $("tabResults");
 const tabHistoryBtn = $("tabHistory");
 const tabFavoritesBtn = $("tabFavorites");
+const tabQuizBtn = $("tabQuiz");
 
 const KEY_API = "trancerate.anthropicApiKey";
 const KEY_API_SESSION = "trancerate.anthropicApiKey.session";
@@ -440,6 +442,7 @@ let voiceFinalText = "";
 let lastResult = null;
 let lastOriginalText = "";
 let activeTab = "results";
+let quizState = null;
 
 function hasClaudeRuntime(){
   return Boolean(window.claude && typeof window.claude.complete === "function");
@@ -886,17 +889,19 @@ function nativeLineHTML(native){
   }).join(" ");
 }
 
-function wordCardHTML(word, index){
-  const fav = isFavorite(word);
-  const examples = Array.isArray(word.examples) ? word.examples : [];
-  const examplesHTML = examples.length ? `
+function examplesBlockHTML(examples){
+  const list = Array.isArray(examples) ? examples : [];
+  return list.length ? `
     <div class="examples">
-      ${examples.map(ex => `
+      ${list.map(ex => `
         <p class="example-line hanzi">${esc(ex.zh)}</p>
         <p class="example-line py">${esc(ex.pinyin)}</p>
         <p class="example-line mean">${esc(ex.ja)}</p>`).join("")}
     </div>` : "";
+}
 
+function wordCardHTML(word, index){
+  const fav = isFavorite(word);
   return `
     <article class="card">
       <div class="card-top">
@@ -914,7 +919,7 @@ function wordCardHTML(word, index){
       <div class="controls" style="margin-top:10px">
         <button class="ghost" type="button" data-example-index="${index}">例文</button>
       </div>
-      ${examplesHTML}
+      ${examplesBlockHTML(word.examples)}
     </article>`;
 }
 
@@ -1015,9 +1020,125 @@ function renderFavorites(){
             </div>
             <div class="mean">${esc(word.meaning)}</div>
             <span class="pos">${esc(word.pos)}</span>
-            <button class="ghost" type="button" data-remove-fav="${index}">削除</button>
+            <div class="controls" style="margin-top:10px">
+              <button class="ghost" type="button" data-fav-example-index="${index}">例文</button>
+              <button class="ghost" type="button" data-remove-fav="${index}">削除</button>
+            </div>
+            ${examplesBlockHTML(word.examples)}
           </article>`).join("")}
       </div>
+    </div>`;
+}
+
+function shuffleItems(items){
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function startQuiz(){
+  const favorites = getFavorites();
+  if (favorites.length < 4){
+    quizState = null;
+    renderQuiz();
+    return;
+  }
+  quizState = {
+    pool: shuffleItems(favorites),
+    current: 0,
+    score: 0,
+    choices: [],
+    answered: false,
+    selected: null
+  };
+  prepareQuizQuestion();
+  renderQuiz();
+}
+
+function prepareQuizQuestion(){
+  if (!quizState) return;
+  const word = quizState.pool[quizState.current];
+  const wrong = shuffleItems(
+    quizState.pool
+      .filter(item => item.meaning !== word.meaning)
+      .map(item => item.meaning)
+      .filter((meaning, index, arr) => meaning && arr.indexOf(meaning) === index)
+  ).slice(0, 3);
+  quizState.choices = shuffleItems([word.meaning, ...wrong]);
+  quizState.answered = false;
+  quizState.selected = null;
+}
+
+function answerQuiz(choice){
+  if (!quizState || quizState.answered) return;
+  const word = quizState.pool[quizState.current];
+  quizState.answered = true;
+  quizState.selected = choice;
+  if (choice === word.meaning){
+    quizState.score += 1;
+  }
+  renderQuiz();
+}
+
+function nextQuiz(){
+  if (!quizState) return;
+  quizState.current += 1;
+  if (quizState.current >= quizState.pool.length){
+    renderQuiz();
+    return;
+  }
+  prepareQuizQuestion();
+  renderQuiz();
+}
+
+function renderQuiz(){
+  const favorites = getFavorites();
+  if (favorites.length < 4){
+    resEl.innerHTML = `
+      <div class="block">
+        <span class="eyebrow">クイズ</span>
+        <p class="translation">クイズには単語が4つ以上必要です。単語カードの☆で単語帳に保存してください。</p>
+      </div>`;
+    return;
+  }
+  if (!quizState){
+    startQuiz();
+    return;
+  }
+  if (quizState.current >= quizState.pool.length){
+    resEl.innerHTML = `
+      <div class="block">
+        <span class="eyebrow">結果</span>
+        <p class="translation">${quizState.score}/${quizState.pool.length}問正解</p>
+        <button class="action" type="button" data-quiz-restart="1">もう一度</button>
+      </div>`;
+    return;
+  }
+  const word = quizState.pool[quizState.current];
+  const answered = quizState.answered;
+  resEl.innerHTML = `
+    <div class="block">
+      <div class="block-head">
+        <span class="eyebrow">クイズ ${quizState.current + 1}/${quizState.pool.length}</span>
+        <span class="pos">${quizState.score}問正解</span>
+      </div>
+      <p class="translation hanzi" style="font-size:2rem;font-weight:800">${esc(word.zh)}</p>
+      <p class="py">${esc(word.pinyin)}</p>
+      <div class="cards" style="margin-top:14px">
+        ${quizState.choices.map(choice => {
+          const isCorrect = choice === word.meaning;
+          const isSelected = choice === quizState.selected;
+          const label = answered && isCorrect ? "正解: " : answered && isSelected ? "選択: " : "";
+          return `<button class="ghost" type="button" data-quiz-choice="${esc(choice)}" ${answered ? "disabled" : ""}>${esc(label + choice)}</button>`;
+        }).join("")}
+      </div>
+      ${answered ? `
+        <p class="translation" style="margin-top:12px">${quizState.selected === word.meaning ? "正解です。" : `不正解です。正解は「${esc(word.meaning)}」です。`}</p>
+        <button class="action" type="button" data-quiz-next="1">${quizState.current + 1 >= quizState.pool.length ? "結果を見る" : "次の問題"}</button>
+      ` : ""}
     </div>`;
 }
 
@@ -1026,6 +1147,7 @@ function setActiveTab(tab){
   tabResultsBtn.setAttribute("aria-pressed", String(tab === "results"));
   tabHistoryBtn.setAttribute("aria-pressed", String(tab === "history"));
   tabFavoritesBtn.setAttribute("aria-pressed", String(tab === "favorites"));
+  tabQuizBtn.setAttribute("aria-pressed", String(tab === "quiz"));
   renderActiveTab();
 }
 
@@ -1035,6 +1157,7 @@ function renderActiveTab(){
   document.body.classList.toggle("hide-translation", hideTranslationEl.checked);
   if (activeTab === "history") renderHistory();
   else if (activeTab === "favorites") renderFavorites();
+  else if (activeTab === "quiz") renderQuiz();
   else renderResults();
 }
 
@@ -1115,6 +1238,37 @@ async function generateExamples(index){
   }
 }
 
+async function generateFavoriteExamples(index){
+  const favorites = getFavorites();
+  if (!favorites[index]) return;
+  const word = favorites[index];
+  const btn = document.querySelector(`[data-fav-example-index="${index}"]`);
+  if (btn){
+    btn.disabled = true;
+    btn.textContent = "生成中";
+  }
+  errEl.classList.remove("show");
+  try{
+    const raw = await callModel("あなたは中国語学習用の例文作成エンジンです。返答はJSONのみです。", buildExamplePrompt(word), 900);
+    const parsed = parseModelJSON(raw);
+    const examples = normalizeExamples(parsed);
+    if (!examples.length){
+      throw new Error("例文データが空でした。もう一度押してください。");
+    }
+    favorites[index].examples = examples;
+    writeJSON(KEY_FAVORITES, favorites);
+    renderFavorites();
+  }catch(error){
+    showError(`<b>単語帳の例文を作れませんでした。</b> ${esc(error.message)}`);
+  }finally{
+    const nextBtn = document.querySelector(`[data-fav-example-index="${index}"]`);
+    if (nextBtn){
+      nextBtn.disabled = false;
+      nextBtn.textContent = "例文";
+    }
+  }
+}
+
 async function run(){
   const text = inputEl.value.trim();
   errEl.classList.remove("show");
@@ -1171,6 +1325,7 @@ copyResultBtn.addEventListener("click", copyResult);
 tabResultsBtn.addEventListener("click", () => setActiveTab("results"));
 tabHistoryBtn.addEventListener("click", () => setActiveTab("history"));
 tabFavoritesBtn.addEventListener("click", () => setActiveTab("favorites"));
+tabQuizBtn.addEventListener("click", () => setActiveTab("quiz"));
 [speechRateEl, hidePinyinEl, hideMeaningEl, hideTranslationEl, autoAnalyzeVoiceEl].forEach(el => {
   el.addEventListener("change", () => {
     savePrefs();
@@ -1190,6 +1345,9 @@ document.addEventListener("click", event => {
   const exampleBtn = event.target.closest("[data-example-index]");
   if (exampleBtn) generateExamples(Number(exampleBtn.dataset.exampleIndex));
 
+  const favExampleBtn = event.target.closest("[data-fav-example-index]");
+  if (favExampleBtn) generateFavoriteExamples(Number(favExampleBtn.dataset.favExampleIndex));
+
   const historyBtn = event.target.closest("[data-history-id]");
   if (historyBtn) restoreHistory(historyBtn.dataset.historyId);
 
@@ -1201,6 +1359,7 @@ document.addEventListener("click", event => {
     const favorites = getFavorites();
     favorites.splice(Number(removeFavBtn.dataset.removeFav), 1);
     writeJSON(KEY_FAVORITES, favorites);
+    quizState = null;
     renderFavorites();
   }
 
@@ -1211,7 +1370,19 @@ document.addEventListener("click", event => {
 
   if (event.target.closest("[data-clear-favorites]")){
     writeJSON(KEY_FAVORITES, []);
+    quizState = null;
     renderFavorites();
+  }
+
+  const quizChoiceBtn = event.target.closest("[data-quiz-choice]");
+  if (quizChoiceBtn) answerQuiz(quizChoiceBtn.dataset.quizChoice);
+
+  if (event.target.closest("[data-quiz-next]")){
+    nextQuiz();
+  }
+
+  if (event.target.closest("[data-quiz-restart]")){
+    startQuiz();
   }
 });
 
