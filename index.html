@@ -411,6 +411,7 @@ const dirJaBtn = $("dirJa");
 const inputLabel = $("inputLabel");
 const runtimeModeEl = $("runtimeMode");
 const modelNameEl = $("modelName");
+const apiPanelEl = document.querySelector(".api-panel");
 const apiKeyEl = $("apiKey");
 const rememberKeyEl = $("rememberKey");
 const clearKeyBtn = $("clearKey");
@@ -532,6 +533,15 @@ function selectedModel(){
   return modelNameEl.value.trim() || "claude-sonnet-4-6";
 }
 
+function revealApiKeyInput(){
+  if (apiPanelEl && "open" in apiPanelEl){
+    apiPanelEl.open = true;
+  }
+  requestAnimationFrame(() => {
+    apiKeyEl.focus();
+  });
+}
+
 function buildSystemPrompt(dir){
   const target = dir === "zh2ja"
     ? "入力された中国語を自然な日本語へ翻訳し、中国語側を解析してください。"
@@ -585,6 +595,7 @@ function buildExamplePrompt(word){
 async function callAnthropicAPI(system, user, maxTokens=1400){
   const key = apiKeyEl.value.trim();
   if (!key){
+    revealApiKeyInput();
     throw new Error("Anthropic APIキーを入力するか、Claude環境で実行してください。");
   }
   persistKeyPreference();
@@ -631,6 +642,7 @@ async function callModel(system, user, maxTokens=1400){
   if (runtime === "anthropic"){
     return callAnthropicAPI(system, user, maxTokens);
   }
+  revealApiKeyInput();
   throw new Error("Claude環境が見つかりません。通常ブラウザで使う場合はAnthropic APIキーを入力してください。");
 }
 
