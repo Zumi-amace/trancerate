@@ -7,9 +7,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#c8442e">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="中文解析">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   :root{
     --ink:#1a1410;
@@ -316,11 +314,11 @@
         <div class="controls">
           <label class="check" for="rememberKey">
             <input id="rememberKey" type="checkbox">
-            このブラウザにAPIキーを保存する
+            APIキーをこの端末に長期保存する
           </label>
           <button id="clearKey" class="ghost" type="button">保存キーを削除</button>
         </div>
-        <p class="note">通常ブラウザで使う場合だけAPIキーを入力してください。保存しない場合、キーはこのページを開いている間だけ使います。</p>
+        <p class="note">通常ブラウザで使う場合だけAPIキーを入力してください。長期保存は個人端末専用です。保存しない場合、キーはこのページを開いている間だけ使います。</p>
       </div>
 
       <div class="study-panel" aria-label="学習設定">
@@ -408,6 +406,7 @@ const tabHistoryBtn = $("tabHistory");
 const tabFavoritesBtn = $("tabFavorites");
 
 const KEY_API = "trancerate.anthropicApiKey";
+const KEY_API_SESSION = "trancerate.anthropicApiKey.session";
 const KEY_HISTORY = "trancerate.history";
 const KEY_FAVORITES = "trancerate.favorites";
 const KEY_PREFS = "trancerate.preferences";
@@ -437,7 +436,17 @@ function readJSON(key, fallback){
 }
 
 function writeJSON(key, value){
-  localStorage.setItem(key, JSON.stringify(value));
+  try{
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  }catch(error){
+    if (error && error.name === "QuotaExceededError"){
+      showError("保存容量がいっぱいです。履歴や単語帳を少し削除してください。");
+    }else{
+      showError("保存に失敗しました。ブラウザのストレージ設定を確認してください。");
+    }
+    return false;
+  }
 }
 
 function updateRuntimeStatus(){
@@ -457,6 +466,7 @@ function updateRuntimeStatus(){
 
 function loadSavedKey(){
   const saved = localStorage.getItem(KEY_API);
+  const sessionSaved = sessionStorage.getItem(KEY_API_SESSION);
   if (BUILT_IN_ANTHROPIC_API_KEY){
     apiKeyEl.value = BUILT_IN_ANTHROPIC_API_KEY;
     apiKeyEl.placeholder = "コード内APIキーを使用中";
@@ -464,21 +474,32 @@ function loadSavedKey(){
   }else if (saved){
     apiKeyEl.value = saved;
     rememberKeyEl.checked = true;
+  }else if (sessionSaved){
+    apiKeyEl.value = sessionSaved;
+    rememberKeyEl.checked = false;
   }
 }
 
 function persistKeyPreference(){
   if (BUILT_IN_ANTHROPIC_API_KEY) return;
   const key = apiKeyEl.value.trim();
-  if (rememberKeyEl.checked && key){
-    localStorage.setItem(KEY_API, key);
-  }else{
-    localStorage.removeItem(KEY_API);
+  try{
+    if (key) sessionStorage.setItem(KEY_API_SESSION, key);
+    else sessionStorage.removeItem(KEY_API_SESSION);
+
+    if (rememberKeyEl.checked && key){
+      localStorage.setItem(KEY_API, key);
+    }else{
+      localStorage.removeItem(KEY_API);
+    }
+  }catch(_error){
+    showError("APIキーの保存に失敗しました。保存せずに使うか、ブラウザのストレージ設定を確認してください。");
   }
 }
 
 function clearSavedKey(){
   localStorage.removeItem(KEY_API);
+  sessionStorage.removeItem(KEY_API_SESSION);
   apiKeyEl.value = "";
   rememberKeyEl.checked = false;
   updateRuntimeStatus();
@@ -736,7 +757,9 @@ function startVoiceInput(){
   recognition.onerror = event => {
     const message = event.error === "not-allowed"
       ? "マイクの使用が許可されませんでした。ブラウザのマイク許可を確認してください。"
-      : `音声入力でエラーが起きました: ${event.error}`;
+      : ["no-speech", "audio-capture", "aborted"].includes(event.error)
+        ? "音声をうまく聞き取れませんでした。もう一度試すか、キーボード入力を使ってください。"
+        : `音声入力でエラーが起きました: ${event.error}`;
     showError(message);
   };
   recognition.onend = () => {
@@ -786,7 +809,7 @@ function toggleFavorite(index){
 
 function addHistory(originalText, data){
   const item = {
-    id: String(Date.now()),
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     at: Date.now(),
     direction,
     originalText,
@@ -998,9 +1021,30 @@ async function copyResult(){
     showError("コピーできる解析結果がまだありません。");
     return;
   }
-  await navigator.clipboard.writeText(text);
-  copyResultBtn.textContent = "コピー済み";
-  setTimeout(() => { copyResultBtn.textContent = "結果をコピー"; }, 1200);
+  try{
+    if (!navigator.clipboard || !navigator.clipboard.writeText){
+      throw new Error("Clipboard API unavailable");
+    }
+    await navigator.clipboard.writeText(text);
+    copyResultBtn.textContent = "コピー済み";
+    setTimeout(() => { copyResultBtn.textContent = "結果をコピー"; }, 1200);
+  }catch(_error){
+    const manual = document.createElement("textarea");
+    manual.value = text;
+    manual.setAttribute("readonly", "");
+    manual.style.position = "fixed";
+    manual.style.left = "-9999px";
+    document.body.appendChild(manual);
+    manual.select();
+    const ok = document.execCommand && document.execCommand("copy");
+    document.body.removeChild(manual);
+    if (ok){
+      copyResultBtn.textContent = "コピー済み";
+      setTimeout(() => { copyResultBtn.textContent = "結果をコピー"; }, 1200);
+    }else{
+      showError("自動コピーできませんでした。ブラウザの共有メニューか、表示中の結果を手動でコピーしてください。");
+    }
+  }
 }
 
 async function generateExamples(index){
